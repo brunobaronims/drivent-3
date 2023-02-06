@@ -7,6 +7,7 @@ import faker from "@faker-js/faker";
 import {
   createEnrollmentWithAddress,
   createHotel,
+  createRoom,
   createTicket,
   createTicketType,
   createUser
@@ -23,6 +24,7 @@ export async function cleanDb() {
   await prisma.session.deleteMany({});
   await prisma.user.deleteMany({});
   await prisma.ticketType.deleteMany({});
+  await prisma.room.deleteMany({});
   await prisma.hotel.deleteMany({});
 }
 
@@ -76,7 +78,14 @@ export async function getNonExistentTicket(server: supertest.SuperTest<supertest
 };
 
 export async function getNonExistentHotel(server: supertest.SuperTest<supertest.Test>, route: string) {
+  const user = await createUser();
+  const token = await generateValidToken(user);
+  const enrollment = await createEnrollmentWithAddress(user);
+  const ticketType = await createTicketType(true, false);
+  const ticket = await createTicket(enrollment.id, ticketType.id, TicketStatus.PAID);
 
+  const response = await server.get(`${route}?ticketId=${ticket.id}`).set('Authorization', `Bearer ${token}`);
+  expect(response.status).toEqual(httpStatus.NOT_FOUND);
 };
 
 export async function getWithUnpaidTicket(server: supertest.SuperTest<supertest.Test>, route: string) {
@@ -120,4 +129,34 @@ export async function getHotels(server: supertest.SuperTest<supertest.Test>, rou
       updatedAt: expect.any(String)
     }
   ]);
+}
+
+export async function getHotelRooms(server: supertest.SuperTest<supertest.Test>, route: string) {
+  const user = await createUser();
+  const token = await generateValidToken(user);
+  const enrollment = await createEnrollmentWithAddress(user);
+  const ticketType = await createTicketType(true, false);
+  const ticket = await createTicket(enrollment.id, ticketType.id, TicketStatus.PAID);
+  const hotel = await createHotel();
+  const room = await createRoom(hotel.id);
+
+  const response = await server.get(`${route}/${hotel.id}?ticketId=${ticket.id}`).set('Authorization', `Bearer ${token}`);
+  expect(response.status).toBe(httpStatus.OK);
+  expect(response.body).toEqual({
+    id: hotel.id,
+    name: hotel.name,
+    image: hotel.image,
+    createdAt: hotel.createdAt.toISOString(),
+    updatedAt: hotel.updatedAt.toISOString(),
+    Rooms: [
+      {
+        id: room.id,
+        name: room.name,
+        capacity: room.capacity,
+        hotelId: room.hotelId,
+        createdAt: room.createdAt.toISOString(),
+        updatedAt: room.updatedAt.toISOString(),
+      }
+    ]
+  })
 }
