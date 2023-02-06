@@ -5,6 +5,14 @@ async function findTicketTypes() {
   return prisma.ticketType.findMany();
 }
 
+async function findTicketTypeById(ticketTypeId: number) {
+  return prisma.ticketType.findFirst({
+    where: {
+      id: ticketTypeId
+    }
+  })
+};
+
 async function findTickeyById(ticketId: number) {
   return prisma.ticket.findFirst({
     where: {
@@ -60,6 +68,7 @@ export type CreateTicketParams = Omit<Ticket, "id" | "createdAt" | "updatedAt">
 
 const ticketRepository = {
   findTicketTypes,
+  findTicketTypeById,
   findTicketByEnrollmentId,
   createTicket,
   findTickeyById,
